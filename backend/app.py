@@ -13,7 +13,11 @@ import fitz  # PyMuPDF for PDF extraction
 load_dotenv()
 
 # Initialize Flask app
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app)  # Allow all origins, modify for production security
+
 
 # Constants
 CHROMA_PATH = "chroma"
@@ -104,28 +108,28 @@ def save_to_chroma(chunks: list[Document]):
 @app.route('/generate_data_store', methods=['POST'])
 def generate_data_store():
     try:
-        # Get the file path from the request data
-        data = request.get_json()
-        file_path = data.get("file_path", None)
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
         
-        if not file_path:
-            return jsonify({"error": "No file path provided"}), 400
+        file = request.files["file"]
+
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
         
-        # Check if the file exists
-        if not os.path.exists(file_path):
-            return jsonify({"error": "The specified file does not exist"}), 400
-        
-        # Load the document, split it into chunks, and save to Chroma
+        # Save the file temporarily
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        # Process the file
         documents = load_documents(file_path)
         chunks = split_text(documents)
         save_to_chroma(chunks)
-        
-        # Return success message
+
         return jsonify({"message": "Data store generated and embeddings saved to ChromaDB!"}), 200
     
     except Exception as e:
-        # Handle errors and return error message
         return jsonify({"error": str(e)}), 500
+
 
 
 @app.route('/query_data', methods=['POST'])
