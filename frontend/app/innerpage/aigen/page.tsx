@@ -65,8 +65,10 @@ const RAGPage = () => {
       });
   
       const data = await response.json();
+      console.log(data)
       if (response.ok) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.response.generated_prompt }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+        console.log(messages)
       } else {
         console.error("Error:", data.error);
       }

@@ -132,27 +132,46 @@ def generate_data_store():
 
 
 
+import ollama
+
 @app.route('/query_data', methods=['POST'])
 def query_data():
     try:
-        # Get the query text from the request data
+        # Get query text from the request
         data = request.get_json()
         query_text = data.get("query_text", None)
         
         if not query_text:
             return jsonify({"error": "No query text provided"}), 400
         
-        # Retrieve relevant chunks based on the query text
+        # Retrieve relevant chunks from RAG
         results = retrieve_relevant_chunks(query_text)
         
         if not results:
             return jsonify({"error": "No relevant results found"}), 404
-        
-        return jsonify({"response": results}), 200
+
+        # Generate meaningful response using Llama 3.2 via Ollama
+        refined_response = generate_llama_response(results)
+
+        return jsonify({"response": refined_response}), 200
     
     except Exception as e:
-        # Handle errors and return error message
         return jsonify({"error": str(e)}), 500
+
+import ollama
+import json
+
+def generate_llama_response(text):
+    """Calls local Llama 3.2 model via Ollama to refine response."""
+    # Ensure text is a string (convert dict/list to JSON if needed)
+    if not isinstance(text, str):
+        text = json.dumps(text, indent=2)  # Convert to formatted JSON string
+
+    print("text",text)
+    response = ollama.chat(model="llama3.2", messages=[{"role": "user", "content": text}])
+    print("reponse",response)
+    return response['message']['content']
+
 
 
 def retrieve_relevant_chunks(query_text: str):
