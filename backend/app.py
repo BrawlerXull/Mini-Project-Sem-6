@@ -86,6 +86,15 @@ def save_to_chroma(chunks: list[Document]):
         client = chromadb.PersistentClient(path=CHROMA_PATH)
         collection = client.get_or_create_collection(COLLECTION_NAME)
         
+        # Retrieve all document IDs in the collection
+        existing_docs = collection.get()
+        existing_ids = [doc_id for doc_id in existing_docs['ids']]
+        
+        if existing_ids:
+            # Delete all existing documents
+            collection.delete(ids=existing_ids)
+            print(f"Deleted {len(existing_ids)} documents from the collection.")
+
         # Load sentence transformer model
         model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
         
@@ -104,6 +113,7 @@ def save_to_chroma(chunks: list[Document]):
     except Exception as e:
         print(f"Error connecting to Chroma: {str(e)}")
         raise
+
 
 @app.route('/generate_data_store', methods=['POST'])
 def generate_data_store():
@@ -212,8 +222,10 @@ def retrieve_relevant_chunks(query_text: str):
         return None
 
 
-@app.route('/summarize_and_generate_questions', methods=['POST'])
-def summarize_and_generate_questions():
+import json
+
+@app.route('/summarize', methods=['POST'])
+def summarize():
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
@@ -234,10 +246,40 @@ def summarize_and_generate_questions():
         summary_prompt = f"Summarize the following text:\n\n{full_text}"
         summary = generate_llama_response(summary_prompt)
 
+        return jsonify({
+            "summary": summary
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+import json
+import re
+
+@app.route('/generate_questions', methods=['POST'])
+def generate_questions():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        # Save the file temporarily
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        # Extract text from the PDF
+        documents = load_pdf(file_path)
+        full_text = "\n".join([doc.page_content for doc in documents])
+
         # Generate key questions with answers
         questions_prompt = f"""
-        Generate 5 key questions along with their answers from the following text.
-        Provide the response in a JSON array format like this:
+        You are an assistant that generates questions based on the provided text.
+        Read the following text and generate exactly 5 key questions along with their answers in a JSON array format.
+        The JSON array should contain question-answer pairs like this:
         [
             {{"question": "What is the main idea?", "answer": "The main idea is ..."}},
             {{"question": "How does X work?", "answer": "X works by ..."}},
@@ -245,6 +287,7 @@ def summarize_and_generate_questions():
             {{"question": "Why is Y important?", "answer": "Y is important because ..."}},
             {{"question": "What is the conclusion?", "answer": "The conclusion is ..."}}
         ]
+        Only return the JSON array, and do not include any additional text or summaries.
 
         Text:
         {full_text}
@@ -252,19 +295,38 @@ def summarize_and_generate_questions():
 
         questions = generate_llama_response(questions_prompt)
 
-        # Ensure the response is properly parsed as JSON
+        # Clean up the response: remove extra spaces, newlines, and unwanted characters.
+        questions = questions.strip()
+
+        print("Questions after LLAMA Response:", repr(questions))
+
+        # Ensure that we only clean up unwanted characters, not valid JSON format
+        # Remove any leading or trailing whitespaces or newlines that might interfere with JSON parsing
+        questions_cleaned = questions.strip()
+
+        # Now attempt to parse the cleaned-up JSON response
         try:
-            questions = json.loads(questions)  # Convert string to array
+            # Attempt to parse the cleaned JSON
+            questions_json = json.loads(questions_cleaned)  # Attempt to parse as JSON
         except json.JSONDecodeError:
-            questions = []  # Handle invalid JSON gracefully
+            # If JSON decode fails, log and return an empty list
+            print(f"JSON decoding failed: {questions_cleaned}")
+            questions_json = []  # Return an empty list in case of failure
+
+        print("Questions JSON:", questions_json)
 
         return jsonify({
-            "summary": summary,
-            "questions": questions  # Now contains both questions & answers
+            "questions": questions_json  # Return the JSON formatted questions & answers
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
 
 
 
