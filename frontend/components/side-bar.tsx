@@ -16,6 +16,7 @@ import {
   Captions,
   ZoomIn,
   Book,
+  LetterText,
 } from "lucide-react";
 
 interface SidebarLink {
@@ -30,6 +31,12 @@ const sidebarLinks: SidebarLink[] = [
     title: "PDF RAG",
     href: "/innerpage/aigen",
     icon: Book,
+    color: "text-pink-500",
+  },
+  {
+    title: "Summarization",
+    href: "/innerpage/summary",
+    icon: LetterText,
     color: "text-pink-500",
   },
 ];

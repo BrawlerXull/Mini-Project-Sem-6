@@ -211,5 +211,62 @@ def retrieve_relevant_chunks(query_text: str):
         print(f"Error retrieving relevant chunks: {str(e)}")
         return None
 
+
+@app.route('/summarize_and_generate_questions', methods=['POST'])
+def summarize_and_generate_questions():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        # Save the file temporarily
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        # Extract text from the PDF
+        documents = load_pdf(file_path)
+        full_text = "\n".join([doc.page_content for doc in documents])
+
+        # Generate summary using Llama
+        summary_prompt = f"Summarize the following text:\n\n{full_text}"
+        summary = generate_llama_response(summary_prompt)
+
+        # Generate key questions with answers
+        questions_prompt = f"""
+        Generate 5 key questions along with their answers from the following text.
+        Provide the response in a JSON array format like this:
+        [
+            {{"question": "What is the main idea?", "answer": "The main idea is ..."}},
+            {{"question": "How does X work?", "answer": "X works by ..."}},
+            {{"question": "What are the key points?", "answer": "The key points are ..."}},
+            {{"question": "Why is Y important?", "answer": "Y is important because ..."}},
+            {{"question": "What is the conclusion?", "answer": "The conclusion is ..."}}
+        ]
+
+        Text:
+        {full_text}
+        """
+
+        questions = generate_llama_response(questions_prompt)
+
+        # Ensure the response is properly parsed as JSON
+        try:
+            questions = json.loads(questions)  # Convert string to array
+        except json.JSONDecodeError:
+            questions = []  # Handle invalid JSON gracefully
+
+        return jsonify({
+            "summary": summary,
+            "questions": questions  # Now contains both questions & answers
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
