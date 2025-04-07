@@ -161,7 +161,7 @@ def query_data():
             return jsonify({"error": "No relevant results found"}), 404
 
         # Generate meaningful response using Llama 3.2 via Ollama
-        refined_response = generate_llama_response(results)
+        refined_response = generate_llama_response_groq(results)
 
         return jsonify({"response": refined_response}), 200
     
@@ -171,7 +171,35 @@ def query_data():
 import ollama
 import json
 
-def generate_llama_response(text):
+import requests
+import json
+
+GROQ_API_KEY = "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"
+GROQ_MODEL = "llama3-70b-8192"  # or "mixtral-8x7b-32768"
+
+def generate_llama_response_groq(text):
+    """Calls Groq API to refine response."""
+    if not isinstance(text, str):
+        text = json.dumps(text, indent=2)
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": text}],
+        "temperature": 0.7
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
+def generate_llama_response_offline(text):
     """Calls local Llama 3.2 model via Ollama to refine response."""
     # Ensure text is a string (convert dict/list to JSON if needed)
     if not isinstance(text, str):
@@ -223,7 +251,6 @@ def retrieve_relevant_chunks(query_text: str):
 
 
 import json
-
 @app.route('/summarize', methods=['POST'])
 def summarize():
     try:
@@ -234,17 +261,15 @@ def summarize():
         if file.filename == "":
             return jsonify({"error": "Empty file uploaded"}), 400
 
-        # Save the file temporarily
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
 
-        # Extract text from the PDF
         documents = load_pdf(file_path)
         full_text = "\n".join([doc.page_content for doc in documents])
 
-        # Generate summary using Llama
-        summary_prompt = f"Summarize the following text:\n\n{full_text}"
-        summary = generate_llama_response(summary_prompt)
+        # Add markdown formatting hint
+        summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
+        summary = generate_llama_response_groq(summary_prompt)
 
         return jsonify({
             "summary": summary
@@ -252,6 +277,7 @@ def summarize():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 import json
@@ -293,7 +319,7 @@ def generate_questions():
         {full_text}
         """
 
-        questions = generate_llama_response(questions_prompt)
+        questions = generate_llama_response_groq(questions_prompt)
 
         # Clean up the response: remove extra spaces, newlines, and unwanted characters.
         questions = questions.strip()

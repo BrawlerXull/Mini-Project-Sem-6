@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useRef } from "react";
 import { FileText, Upload, Loader2, Volume2, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
-import ReactMarkdown from "react-markdown";
 
 const PDFSummarizer = () => {
   const [file, setFile] = useState(null);
@@ -33,61 +32,78 @@ const PDFSummarizer = () => {
   
     setIsProcessing(true);
   
-    const formData = new FormData();
-    formData.append("file", file);
-  
     try {
-      // Step 1: Get the summary
+      // Step 1: OCR Extraction
+      const formDataOCR = new FormData();
+      formDataOCR.append("file", file);
+  
+      const ocrResponse = await fetch("http://localhost:5000/ocr_pdf_extract", {
+        method: "POST",
+        body: formDataOCR,
+      });
+  
+      if (!ocrResponse.ok) {
+        throw new Error("Failed to extract text from handwritten PDF");
+      }
+  
+      const { extracted_text } = await ocrResponse.json();
+      console.log("Extracted Text:", extracted_text);
+  
+      // Step 2: Summarize the extracted text
       const summaryResponse = await fetch("http://localhost:5000/summarize", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: extracted_text }),
       });
   
       if (!summaryResponse.ok) {
-        throw new Error("Failed to process PDF for summary");
+        throw new Error("Failed to process summary");
       }
   
       const summaryData = await summaryResponse.json();
       console.log("Summary:", summaryData.summary);
   
-      // Step 2: Get the questions
+      // Step 3: Generate questions from the extracted text
       const questionsResponse = await fetch("http://localhost:5000/generate_questions", {
-          method: "POST",
-          body: formData,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: extracted_text }),
       });
-
+  
       if (!questionsResponse.ok) {
-          throw new Error("Failed to process PDF for questions");
+        throw new Error("Failed to process questions");
       }
-
+  
       const questionsData = await questionsResponse.json();
       console.log("Questions:", questionsData.questions);
-
-      // Ensure that the response has the expected 'questions' structure
-      const questionsArray = Array.isArray(questionsData.questions) ? questionsData.questions : [];
-
-      // If questions are not in the expected format, handle this scenario (optional)
-      if (questionsArray.length === 0) {
-          console.error("No valid questions received");
-          setQuestions([]); // Set questions to empty if no valid questions
-          return;
-      }
-
-      console.log("Questions array:", questionsArray);
-
   
-      // Set the state for summary and questions
+      const questionsArray = Array.isArray(questionsData)
+        ? questionsData
+        : questionsData.questions || [];
+  
+      if (questionsArray.length === 0) {
+        console.error("No valid questions received");
+        setQuestions([]);
+        return;
+      }
+  
       setSummary(summaryData.summary);
       setQuestions(questionsArray);
   
     } catch (error) {
       console.error("Error:", error);
-      setSummary("Failed to generate summary. Please try again.");
+      setSummary("Failed to process. Please try again.");
       setQuestions([]);
     } finally {
       setIsProcessing(false);
     }
   };
+  
+
   
   
 
@@ -294,8 +310,8 @@ const PDFSummarizer = () => {
                     </span>
                     Document Summary
                   </h3>
-                  <div className="prose max-w-none prose-p:leading-relaxed prose-li:my-1 text-gray-700">
-                    <ReactMarkdown>{summary}</ReactMarkdown>
+                  <div className="prose max-w-none">
+                    <p className="text-gray-700 leading-relaxed">{summary}</p>
                   </div>
                 </div>
                 

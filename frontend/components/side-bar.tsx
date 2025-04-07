@@ -17,6 +17,7 @@ import {
   ZoomIn,
   Book,
   LetterText,
+  Pen,
 } from "lucide-react";
 
 interface SidebarLink {
@@ -37,6 +38,12 @@ const sidebarLinks: SidebarLink[] = [
     title: "Summarization",
     href: "/innerpage/summary",
     icon: LetterText,
+    color: "text-pink-500",
+  },
+  {
+    title: "Handwritten",
+    href: "/innerpage/handwritten",
+    icon: Pen,
     color: "text-pink-500",
   },
 ];
