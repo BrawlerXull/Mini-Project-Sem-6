@@ -14,6 +14,8 @@ const PDFSummarizer = () => {
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
 
+  
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -88,19 +90,42 @@ const PDFSummarizer = () => {
   
   
 
-  const generateAudio = () => {
+  const generateAudio = async () => {
     if (!summary) return;
-
+  
     setIsGeneratingAudio(true);
-
-    // Simulate audio generation
-    setTimeout(() => {
-      // In a real application, you would call a text-to-speech API here
-      // For this example, we'll just simulate having an audio URL
-      setAudioUrl('https://example.com/simulated-audio.mp3');
+  
+    try {
+      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
+        method: 'POST',
+        headers: {
+          'xi-api-key': 'sk_6f76693cd8ab3307cd683783d84e811b017984841c722678',
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: summary,
+          voice_settings: {
+            stability: 0.75,
+            similarity_boost: 0.75
+          }
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+  
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      setAudioUrl(audioUrl);
+    } catch (error) {
+      console.error('Audio generation error:', error);
+    } finally {
       setIsGeneratingAudio(false);
-    }, 2000);
+    }
   };
+  
 
   const toggleQuestion = (index) => {
     setExpandedQuestions(prev => ({

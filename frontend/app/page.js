@@ -42,7 +42,7 @@ const LandingPage = () => {
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Simply upload your PDF, and our AI system will help you extract insights and answer your questions from the document.
               </p>
-              <Link href="/innerpage/askquestions" className="flex justify-center gap-4 mt-8">
+              <Link href="/innerpage/aigen" className="flex justify-center gap-4 mt-8">
                 <button className="rounded-full px-8 py-6 text-lg gap-2 bg-pink-500 hover:bg-pink-600 text-white inline-flex items-center">
                   Start Asking Questions <ArrowRight className="ml-2" size={18} />
                 </button>
