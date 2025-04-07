@@ -15,6 +15,14 @@ const PDFExpander = () => {
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
 
+
+  const [characterCount, setCharacterCount] = useState('');
+
+  // Step 2: Create an onChange handler to update the state
+  const handleInputChange = (event) => {
+    setCharacterCount(event.target.value); // Update state with input value
+  };
+
   
 
   const handleFileChange = (e) => {
@@ -35,6 +43,7 @@ const PDFExpander = () => {
   
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("desired_character_count", characterCount);
   
     try {
       // Step 1: Get the summary
@@ -208,6 +217,16 @@ const PDFExpander = () => {
                   Select PDF
                 </button>
               ) : !summary ? (
+
+                <div>
+                 <input
+                  type="text"
+                  placeholder="Enter characters"
+                  className="w-full border border-pink-300 text-white-500 hover:bg-pink-50 font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 mb-5"
+                  value={characterCount} // Bind input value to state
+                  onChange={handleInputChange} // Listen to input changes
+                />
+
                 <button
                   onClick={handleProcessPDF}
                   disabled={isProcessing}
@@ -222,6 +241,7 @@ const PDFExpander = () => {
                     'Generate Summary'
                   )}
                 </button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   <button

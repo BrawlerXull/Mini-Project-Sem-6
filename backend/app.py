@@ -337,6 +337,9 @@ def summarize_ocr():
         return jsonify({"error": str(e)}), 500
     
 import json
+from flask import request, jsonify
+import os
+
 @app.route('/expand_ocr', methods=['POST'])
 def expand_ocr():
     try:
@@ -350,13 +353,15 @@ def expand_ocr():
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
 
-        # documents = load_pdf(file_path)
         # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
 
-        # Add markdown formatting hint
+        # Get desired character count from the frontend
+        desired_character_count = int(request.form.get("desired_character_count", 1000))  # Default to 1000 if not provided
+
+        # Add markdown formatting hint and adjust the system prompt
         expansion_prompt = f"""
-            You are an expert researcher and explainer. Expand on the key topics mentioned in the following text by adding relevant background, causes, effects, real-world examples, and related concepts. Present your expansion as a well-structured Markdown output — use bullet points for lists, and paragraphs when necessary. Maintain clarity and avoid repetition.
+            You are an expert researcher and explainer. Expand on the key topics mentioned in the following text by adding relevant background, causes, effects, real-world examples, and related concepts. Present your expansion as a well-structured Markdown output — use bullet points for lists, and paragraphs when necessary. Maintain clarity and avoid repetition. The expanded response should be approximately {desired_character_count} characters long.
 
             Text to expand:
             \"\"\"
@@ -364,10 +369,20 @@ def expand_ocr():
             \"\"\"
             """
 
+        # Generate the expanded text using your model
         summary = generate_llama_response_groq(expansion_prompt)
 
+        # Ensure that the summary is within the desired character length range
+        if len(summary) > desired_character_count:
+            summary = summary[:desired_character_count]  # Trim if too long
+        elif len(summary) < desired_character_count:
+            # Optionally pad or adjust the response if too short, depending on how you want to handle this.
+            summary += " " * (desired_character_count - len(summary))
+
+        # Return the expanded text and its character count
         return jsonify({
-            "summary": summary
+            "summary": summary,
+            "character_count": len(summary)
         }), 200
 
     except Exception as e:
