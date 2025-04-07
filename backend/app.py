@@ -280,6 +280,34 @@ def summarize():
         return jsonify({"error": str(e)}), 500
 
 import json
+@app.route('/expand', methods=['POST'])
+def expand():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        documents = load_pdf(file_path)
+        full_text = "\n".join([doc.page_content for doc in documents])
+
+        # Add markdown formatting hint
+        summary_prompt = f"Expand the following text on the main topics mentioned in the text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
+        summary = generate_llama_response_groq(summary_prompt)
+
+        return jsonify({
+            "summary": summary
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+import json
 @app.route('/summarize_ocr', methods=['POST'])
 def summarize_ocr():
     try:
@@ -300,6 +328,43 @@ def summarize_ocr():
         # Add markdown formatting hint
         summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
         summary = generate_llama_response_groq(summary_prompt)
+
+        return jsonify({
+            "summary": summary
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+import json
+@app.route('/expand_ocr', methods=['POST'])
+def expand_ocr():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        # documents = load_pdf(file_path)
+        # full_text = "\n".join([doc.page_content for doc in documents])
+        full_text = extract_text_from_pdf(file_path, "K83693271888957")
+
+        # Add markdown formatting hint
+        expansion_prompt = f"""
+            You are an expert researcher and explainer. Expand on the key topics mentioned in the following text by adding relevant background, causes, effects, real-world examples, and related concepts. Present your expansion as a well-structured Markdown output — use bullet points for lists, and paragraphs when necessary. Maintain clarity and avoid repetition.
+
+            Text to expand:
+            \"\"\"
+            {full_text}
+            \"\"\"
+            """
+
+        summary = generate_llama_response_groq(expansion_prompt)
 
         return jsonify({
             "summary": summary

@@ -3,7 +3,7 @@ import React, { useState, useRef } from "react";
 import { FileText, Upload, Loader2, Volume2, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
 
-const PDFSummarizer = () => {
+const PDFExpander = () => {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState('');
@@ -38,7 +38,7 @@ const PDFSummarizer = () => {
   
     try {
       // Step 1: Get the summary
-      const summaryResponse = await fetch("http://localhost:5000/summarize_ocr", {
+      const summaryResponse = await fetch("http://localhost:5000/expand_ocr", {
         method: "POST",
         body: formData,
       });
@@ -49,41 +49,41 @@ const PDFSummarizer = () => {
   
       const summaryData = await summaryResponse.json();
       console.log("Summary:", summaryData.summary);
-      
+  
       // Step 2: Get the questions
       const questionsResponse = await fetch("http://localhost:5000/generate_questions_from_text", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-              text: summaryData.summary,  // 👈 Send OCRed summary text
-          }),
-      });
-      
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            text: summaryData.summary,  // 👈 Send OCRed summary text
+        }),
+    });
+
       if (!questionsResponse.ok) {
-          throw new Error("Failed to process text for questions");
+          throw new Error("Failed to process PDF for questions");
       }
-      
+
       const questionsData = await questionsResponse.json();
       console.log("Questions:", questionsData.questions);
-      
+
+      // Ensure that the response has the expected 'questions' structure
       const questionsArray = Array.isArray(questionsData.questions) ? questionsData.questions : [];
-      
+
+      // If questions are not in the expected format, handle this scenario (optional)
       if (questionsArray.length === 0) {
-          setQuestions([]);
+          console.error("No valid questions received");
+          setQuestions([]); // Set questions to empty if no valid questions
           return;
       }
-      
+
       console.log("Questions array:", questionsArray);
-      
 
   
       // Set the state for summary and questions
       setSummary(summaryData.summary);
       setQuestions(questionsArray);
-
-      console.log(summaryData)
   
     } catch (error) {
       console.error("Error:", error);
@@ -162,7 +162,7 @@ const PDFSummarizer = () => {
       {/* Header */}
       <header className="bg-pink-50 border-b border-pink-100 py-4 px-6">
         <div className="max-w-6xl mx-auto flex items-center">
-          <h1 className="text-3xl font-bold text-pink-500">Handwritten notes</h1>
+          <h1 className="text-3xl font-bold text-pink-500">PDF Summarizer</h1>
         </div>
       </header>
 
@@ -350,4 +350,4 @@ const PDFSummarizer = () => {
   );
 };
 
-export default PDFSummarizer;
+export default PDFExpander;
