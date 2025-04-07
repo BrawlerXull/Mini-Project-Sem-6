@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useRef } from "react";
 import { FileText, Upload, Loader2, Volume2, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
+import ReactMarkdown from "react-markdown";
 
 const PDFSummarizer = () => {
   const [file, setFile] = useState(null);
@@ -32,78 +33,66 @@ const PDFSummarizer = () => {
   
     setIsProcessing(true);
   
+    const formData = new FormData();
+    formData.append("file", file);
+  
     try {
-      // Step 1: OCR Extraction
-      const formDataOCR = new FormData();
-      formDataOCR.append("file", file);
-  
-      const ocrResponse = await fetch("http://localhost:5000/ocr_pdf_extract", {
+      // Step 1: Get the summary
+      const summaryResponse = await fetch("http://localhost:5000/summarize_ocr", {
         method: "POST",
-        body: formDataOCR,
-      });
-  
-      if (!ocrResponse.ok) {
-        throw new Error("Failed to extract text from handwritten PDF");
-      }
-  
-      const { extracted_text } = await ocrResponse.json();
-      console.log("Extracted Text:", extracted_text);
-  
-      // Step 2: Summarize the extracted text
-      const summaryResponse = await fetch("http://localhost:5000/summarize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: extracted_text }),
+        body: formData,
       });
   
       if (!summaryResponse.ok) {
-        throw new Error("Failed to process summary");
+        throw new Error("Failed to process PDF for summary");
       }
   
       const summaryData = await summaryResponse.json();
       console.log("Summary:", summaryData.summary);
-  
-      // Step 3: Generate questions from the extracted text
-      const questionsResponse = await fetch("http://localhost:5000/generate_questions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: extracted_text }),
+      
+      // Step 2: Get the questions
+      const questionsResponse = await fetch("http://localhost:5000/generate_questions_from_text", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+              text: summaryData.summary,  // 👈 Send OCRed summary text
+          }),
       });
-  
+      
       if (!questionsResponse.ok) {
-        throw new Error("Failed to process questions");
+          throw new Error("Failed to process text for questions");
       }
-  
+      
       const questionsData = await questionsResponse.json();
       console.log("Questions:", questionsData.questions);
-  
-      const questionsArray = Array.isArray(questionsData)
-        ? questionsData
-        : questionsData.questions || [];
-  
+      
+      const questionsArray = Array.isArray(questionsData.questions) ? questionsData.questions : [];
+      
       if (questionsArray.length === 0) {
-        console.error("No valid questions received");
-        setQuestions([]);
-        return;
+          setQuestions([]);
+          return;
       }
+      
+      console.log("Questions array:", questionsArray);
+      
+
   
+      // Set the state for summary and questions
       setSummary(summaryData.summary);
       setQuestions(questionsArray);
+
+      console.log(summaryData)
   
     } catch (error) {
       console.error("Error:", error);
-      setSummary("Failed to process. Please try again.");
+      setSummary("Failed to generate summary. Please try again.");
       setQuestions([]);
     } finally {
       setIsProcessing(false);
     }
   };
-  
-
   
   
 
@@ -310,8 +299,8 @@ const PDFSummarizer = () => {
                     </span>
                     Document Summary
                   </h3>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 leading-relaxed">{summary}</p>
+                  <div className="prose max-w-none prose-p:leading-relaxed prose-li:my-1 text-gray-700">
+                    <ReactMarkdown>{summary}</ReactMarkdown>
                   </div>
                 </div>
                 

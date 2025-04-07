@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import nltk
 import fitz  # PyMuPDF for PDF extraction
+from ocr import extract_text_from_pdf  # Custom OCR function
 
 # Load environment variables
 load_dotenv()
@@ -278,6 +279,35 @@ def summarize():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+import json
+@app.route('/summarize_ocr', methods=['POST'])
+def summarize_ocr():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        file_path = os.path.join("/tmp", file.filename)
+        file.save(file_path)
+
+        # documents = load_pdf(file_path)
+        # full_text = "\n".join([doc.page_content for doc in documents])
+        full_text = extract_text_from_pdf(file_path, "K83693271888957")
+
+        # Add markdown formatting hint
+        summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
+        summary = generate_llama_response_groq(summary_prompt)
+
+        return jsonify({
+            "summary": summary
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 import json
@@ -314,7 +344,6 @@ def generate_questions():
             {{"question": "What is the conclusion?", "answer": "The conclusion is ..."}}
         ]
         Only return the JSON array, and do not include any additional text or summaries.
-
         Text:
         {full_text}
         """
@@ -347,6 +376,51 @@ def generate_questions():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+from flask import request, jsonify
+import json
+
+@app.route('/generate_questions_from_text', methods=['POST'])
+def generate_questions_from_text():
+    try:
+        data = request.get_json()
+
+        if not data or "text" not in data:
+            return jsonify({"error": "Missing 'text' in request body"}), 400
+
+        full_text = data["text"]
+
+        # Prompt to generate key questions with answers
+        questions_prompt = f"""
+        You are an assistant that generates questions based on the provided text.
+        Read the following text and generate exactly 5 key questions along with their answers in a JSON array format.
+        The JSON array should contain question-answer pairs like this:
+        [
+            {{"question": "What is the main idea?", "answer": "The main idea is ..."}},
+            {{"question": "How does X work?", "answer": "X works by ..."}},
+            {{"question": "What are the key points?", "answer": "The key points are ..."}},
+            {{"question": "Why is Y important?", "answer": "Y is important because ..."}},
+            {{"question": "What is the conclusion?", "answer": "The conclusion is ..."}}
+        ]
+        Only return the JSON array, and do not include any additional text or summaries.
+        Text:
+        {full_text}
+        """
+
+        questions = generate_llama_response_groq(questions_prompt).strip()
+
+        try:
+            questions_json = json.loads(questions)
+        except json.JSONDecodeError:
+            print(f"❌ JSON decoding failed: {questions}")
+            questions_json = []
+
+        return jsonify({"questions": questions_json}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 
