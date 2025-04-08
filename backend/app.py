@@ -46,6 +46,8 @@ Answer the question based on the above context: {question}
 
 def load_documents(file_path: str):
     # Check if the file is a markdown file or a PDF file and load accordingly
+
+    
     if file_path.endswith('.md'):
         # Use TextLoader for Markdown files
         loader = TextLoader(file_path)
@@ -68,7 +70,9 @@ def load_pdf(file_path: str):
     doc.close()
     
     # Wrap the extracted text into a Document object
-    document = Document(page_content=text)
+    full_text = extract_text_from_pdf(file_path, "K83693271888957")
+    # document = Document(page_content=text)
+    document = Document(page_content=full_text)
     return [document]  # Return as a list of documents
 
 def split_text(documents: list[Document]):
@@ -117,29 +121,94 @@ def save_to_chroma(chunks: list[Document]):
         print(f"Error connecting to Chroma: {str(e)}")
         raise
 
+import os
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+def convert_to_pdf(input_path):
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    output_dir = os.path.join(os.getcwd(), "uploads", "converted")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"{base_name}.pdf")
+
+    ext = os.path.splitext(input_path)[1].lower()
+
+    if ext in ['.png', '.jpg', '.jpeg']:
+        image = Image.open(input_path).convert("RGB")
+        image.save(output_path)
+        return output_path
+
+    elif ext == '.txt':
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+
+        with open(input_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+
+        c = canvas.Canvas(output_path, pagesize=letter)
+        width, height = letter
+        y = height - 50
+        for line in text.split('\n'):
+            c.drawString(40, y, line)
+            y -= 15
+            if y < 50:
+                c.showPage()
+                y = height - 50
+        c.save()
+        return output_path
+
+    elif ext == '.docx':
+        from docx2pdf import convert
+        convert(input_path, output_path)
+        return output_path
+
+    elif ext == '.pdf':
+        return input_path
+
+    else:
+        raise Exception(f"Unsupported file type: {ext}")
+
+
+
+
+import os
+from flask import request, jsonify
+from werkzeug.utils import secure_filename
 
 @app.route('/generate_data_store', methods=['POST'])
 def generate_data_store():
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
-        
-        file = request.files["file"]
 
+        file = request.files["file"]
         if file.filename == "":
             return jsonify({"error": "Empty file uploaded"}), 400
-        
-        # Save the file temporarily
-        file_path = os.path.join("/tmp", file.filename)
-        file.save(file_path)
 
-        # Process the file
-        documents = load_documents(file_path)
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join("/tmp", filename)
+        file.save(temp_path)
+
+        print("File name:", filename)
+
+        # Convert to PDF if not already a PDF
+        if not filename.lower().endswith('.pdf'):
+            print(temp_path)
+            pdf_path = convert_to_pdf(temp_path)
+            print("Converted PDF path:", pdf_path)
+        else:
+            pdf_path = temp_path
+
+        # Process the (PDF) file
+        documents = load_documents(pdf_path)
+        print("oh yeah")
         chunks = split_text(documents)
+        print("oh yeah 2")
         save_to_chroma(chunks)
 
         return jsonify({"message": "Data store generated and embeddings saved to ChromaDB!"}), 200
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

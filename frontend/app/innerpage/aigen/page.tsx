@@ -104,7 +104,7 @@ const RAGPage = () => {
               
               <input
                 type="file"
-                accept=".pdf"
+                accept=".pdf .docx .md .txt .jpg .png"
                 onChange={handleFileChange}
                 ref={fileInputRef}
                 className="hidden"
