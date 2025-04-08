@@ -2,6 +2,7 @@
 import React, { useState, useRef } from "react";
 import { FileText, Upload, Loader2, Volume2, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
+import removeMarkdown from 'remove-markdown';
 
 const PDFSummarizer = () => {
   const [file, setFile] = useState(null);
@@ -99,7 +100,17 @@ const PDFSummarizer = () => {
   const generateAudio = async () => {
     if (!summary) return;
   
+    let plainText = removeMarkdown(summary);  // 👈 Strip Markdown here
     setIsGeneratingAudio(true);
+    console.log(plainText)
+    plainText = summary
+    .replace(/\*\*(.*?)\*\*/g, '$1')  // remove **bold**
+    .replace(/\*(.*?)\*/g, '$1')      // remove *italic*
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // remove inline code
+    .replace(/#+\s?(.*)/g, '$1');     // remove headings
+  
+    console.log(plainText)
+  
   
     try {
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
@@ -110,7 +121,7 @@ const PDFSummarizer = () => {
           'Accept': 'audio/mpeg',
         },
         body: JSON.stringify({
-          text: summary,
+          text: plainText,
           voice_settings: {
             stability: 0.75,
             similarity_boost: 0.75

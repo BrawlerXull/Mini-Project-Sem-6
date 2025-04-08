@@ -1,4 +1,5 @@
 'use client';
+import removeMarkdown from 'remove-markdown';
 import React, { useState, useRef } from "react";
 import { FileText, Upload, Loader2, Volume2, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
@@ -105,41 +106,54 @@ const PDFExpander = () => {
   
   
 
-  const generateAudio = async () => {
-    if (!summary) return;
   
-    setIsGeneratingAudio(true);
-  
-    try {
-      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
-        method: 'POST',
-        headers: {
-          'xi-api-key': 'sk_6f76693cd8ab3307cd683783d84e811b017984841c722678',
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg',
-        },
-        body: JSON.stringify({
-          text: summary,
-          voice_settings: {
-            stability: 0.75,
-            similarity_boost: 0.75
-          }
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to generate audio');
-      }
-  
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setAudioUrl(audioUrl);
-    } catch (error) {
-      console.error('Audio generation error:', error);
-    } finally {
-      setIsGeneratingAudio(false);
+
+const generateAudio = async () => {
+  if (!summary) return;
+
+  let plainText = removeMarkdown(summary);  // 👈 Strip Markdown here
+  setIsGeneratingAudio(true);
+  console.log(plainText)
+  plainText = summary
+  .replace(/\*\*(.*?)\*\*/g, '$1')  // remove **bold**
+  .replace(/\*(.*?)\*/g, '$1')      // remove *italic*
+  .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // remove inline code
+  .replace(/#+\s?(.*)/g, '$1');     // remove headings
+
+  console.log(plainText)
+
+
+  try {
+    const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
+      method: 'POST',
+      headers: {
+        'xi-api-key': 'sk_6f76693cd8ab3307cd683783d84e811b017984841c722678',
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text: plainText,
+        voice_settings: {
+          stability: 0.75,
+          similarity_boost: 0.75
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate audio');
     }
-  };
+
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    setAudioUrl(audioUrl);
+  } catch (error) {
+    console.error('Audio generation error:', error);
+  } finally {
+    setIsGeneratingAudio(false);
+  }
+};
+
   
 
   const toggleQuestion = (index) => {
