@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import nltk
 import fitz  # PyMuPDF for PDF extraction
 from ocr import extract_text_from_pdf  # Custom OCR function
+from levenshtein_accuracy import calculate_levenshtein_accuracy
+
 
 # Load environment variables
 load_dotenv()
@@ -325,6 +327,18 @@ def summarize_ocr():
         # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
 
+        accuracy = calculate_levenshtein_accuracy(full_text, """6.4) Superposition of Waves
+Principle:
+
+When two or more waves, travelling through a medium, pass through a common point, each wave produces its own displacement at that point, independent of the presence of other waves. The resultant displacement at that point is equal to the vector sum of displacements due to the individual wave at that point.
+
+There is no change in shape & nature of individual waves due to superposition of waves.
+
+This principle is applicable to all types of waves like sound waves, light waves, waves on string etc.""")
+        
+        print(f"Levenshtein accuracy: {accuracy:.2f}%")
+
+
         # Add markdown formatting hint
         summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
         summary = generate_llama_response_groq(summary_prompt)
@@ -355,6 +369,9 @@ def expand_ocr():
 
         # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
+
+        accuracy = calculate_levenshtein_accuracy(full_text, "Expected text for accuracy check")
+        print(f"Levenshtein accuracy: {accuracy:.2f}%")
 
         # Get desired character count from the frontend
         desired_character_count = int(request.form.get("desired_character_count", 1000))  # Default to 1000 if not provided
