@@ -215,25 +215,25 @@ def generate_data_store():
 
 
 import ollama
-
 @app.route('/query_data', methods=['POST'])
 def query_data():
     try:
-        # Get query text from the request
         data = request.get_json()
         query_text = data.get("query_text", None)
+        model = data.get("model", "groq") 
         
         if not query_text:
             return jsonify({"error": "No query text provided"}), 400
-        
-        # Retrieve relevant chunks from RAG
+
         results = retrieve_relevant_chunks(query_text)
         
         if not results:
             return jsonify({"error": "No relevant results found"}), 404
 
-        # Generate meaningful response using Llama 3.2 via Ollama
-        refined_response = generate_llama_response_groq(results)
+        if model == "llama":
+            refined_response = generate_llama_response_offline(results)
+        else:
+            refined_response = generate_llama_response_groq(results)
 
         return jsonify({"response": refined_response}), 200
     
@@ -326,22 +326,33 @@ import json
 @app.route('/summarize', methods=['POST'])
 def summarize():
     try:
-        if "file" not in request.files:
+        # Parse form data for file and model (if provided)
+        data = request.form
+        file = request.files.get("file", None)
+        model = data.get("model", "groq")
+
+        if not file:
             return jsonify({"error": "No file uploaded"}), 400
         
-        file = request.files["file"]
         if file.filename == "":
             return jsonify({"error": "Empty file uploaded"}), 400
 
+        # Save the uploaded file to a temporary location
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
 
+        # Load PDF and extract text
         documents = load_pdf(file_path)
         full_text = "\n".join([doc.page_content for doc in documents])
 
-        # Add markdown formatting hint
+        # Create a summary prompt with markdown formatting
         summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
-        summary = generate_llama_response_groq(summary_prompt)
+
+        # Generate summary based on model selection
+        if model == "llama":
+            summary = generate_llama_response_offline(summary_prompt)
+        else:
+            summary = generate_llama_response_groq(summary_prompt)
 
         return jsonify({
             "summary": summary
@@ -363,6 +374,9 @@ def expand():
 
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
+
+        # Get model from form data
+        model = request.form.get("model", "groq")
 
         documents = load_pdf(file_path)
         full_text = "\n".join([doc.page_content for doc in documents])
@@ -411,6 +425,7 @@ iii. Massive machine type communication"""
 
 
 import json
+
 @app.route('/summarize_ocr', methods=['POST'])
 def summarize_ocr():
     try:
@@ -418,31 +433,38 @@ def summarize_ocr():
             return jsonify({"error": "No file uploaded"}), 400
         
         file = request.files["file"]
+        
         if file.filename == "":
             return jsonify({"error": "Empty file uploaded"}), 400
 
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
 
-        # documents = load_pdf(file_path)
-        # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
 
         accuracy = calculate_levenshtein_accuracy(full_text, wmax)
-        
         print(f"Levenshtein accuracy: {accuracy:.2f}%")
 
+        # Get model from form data
+        model = request.form.get("model", "groq")
+        print("Model selected:", model)
 
-        # Add markdown formatting hint
         summary_prompt = f"Summarize the following text as a markdown bullet list or paragraph when appropriate:\n\n{full_text}"
-        summary = generate_llama_response_groq(summary_prompt)
+
+        # Select model for summary generation
+        if model == "llama":
+            summary = generate_llama_response_offline(summary_prompt)
+        else:
+            summary = generate_llama_response_groq(summary_prompt)
 
         return jsonify({
-            "summary": summary
+            "summary": summary,
+            "accuracy": accuracy
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
     
 import json
 from flask import request, jsonify
@@ -461,16 +483,15 @@ def expand_ocr():
         file_path = os.path.join("/tmp", file.filename)
         file.save(file_path)
 
-        # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
 
         accuracy = calculate_levenshtein_accuracy(full_text, "Expected text for accuracy check")
         print(f"Levenshtein accuracy: {accuracy:.2f}%")
 
-        # Get desired character count from the frontend
-        desired_character_count = int(request.form.get("desired_character_count", 1000))  # Default to 1000 if not provided
+        # Get model and character count from form data
+        model = request.form.get("model", "groq")
+        desired_character_count = int(request.form.get("desired_character_count", 1000))
 
-        # Add markdown formatting hint and adjust the system prompt
         expansion_prompt = f"""
             You are an expert researcher and explainer. Expand on the key topics mentioned in the following text by adding relevant background, causes, effects, real-world examples, and related concepts. Present your expansion as a well-structured Markdown output — use bullet points for lists, and paragraphs when necessary. Maintain clarity and avoid repetition. The expanded response should be approximately {desired_character_count} characters long.
 
@@ -478,19 +499,20 @@ def expand_ocr():
             \"\"\"
             {full_text}
             \"\"\"
-            """
+        """
 
-        # Generate the expanded text using your model
-        summary = generate_llama_response_groq(expansion_prompt)
+        # Use selected model
+        if model == "llama":
+            summary = generate_llama_response_offline(expansion_prompt)
+        else:
+            summary = generate_llama_response_groq(expansion_prompt)
 
-        # Ensure that the summary is within the desired character length range
+        # Trim or pad the output as needed
         if len(summary) > desired_character_count:
-            summary = summary[:desired_character_count]  # Trim if too long
+            summary = summary[:desired_character_count]
         elif len(summary) < desired_character_count:
-            # Optionally pad or adjust the response if too short, depending on how you want to handle this.
             summary += " " * (desired_character_count - len(summary))
 
-        # Return the expanded text and its character count
         return jsonify({
             "summary": summary,
             "character_count": len(summary)
@@ -498,8 +520,6 @@ def expand_ocr():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
 
 import json
 import re

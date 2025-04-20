@@ -11,6 +11,8 @@ const RAGPage = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selected, setSelected] = useState("Llama");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -44,6 +46,11 @@ const RAGPage = () => {
       setIsProcessing(false);
     }
   };
+
+  const handleSelect = (option) => {
+    setSelected(option);
+    setIsOpen(false);
+  };
   
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,7 +68,7 @@ const RAGPage = () => {
       const response = await fetch("http://localhost:5000/query_data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query_text: input }),
+        body: JSON.stringify({ query_text: input , model: selected.toLowerCase() }),
       });
   
       const data = await response.json();
@@ -149,11 +156,48 @@ const RAGPage = () => {
           </div>
         ) : (
           <div className="flex flex-col h-[90vh]">
-            <div className="bg-pink-50 rounded-t-lg p-4 border border-pink-100">
+            <div className="bg-pink-50 rounded-t-lg p-4 border border-pink-100 flex justify-between items-center">
               <div className="flex items-center">
                 <FileText size={20} className="text-pink-500 mr-2" />
                 <span className="font-medium">{file?.name}</span>
               </div>
+              <div className="relative inline-block text-left">
+      <div>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="inline-flex justify-between w-40 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none"
+        >
+          {selected}
+          <svg
+            className="w-5 h-5 ml-2 -mr-1 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.854a.75.75 0 111.08 1.04l-4.25 4.417a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg">
+          <ul className="py-1 text-sm text-gray-700">
+            {["Llama", "Custom"].map((option) => (
+              <li
+                key={option}
+                onClick={() => handleSelect(option)}
+                className="block px-4 py-2 cursor-pointer hover:bg-gray-100"
+              >
+                {option}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
             </div>
             
             <div className="flex-1 overflow-y-auto border-l border-r border-pink-100 p-4 bg-white">

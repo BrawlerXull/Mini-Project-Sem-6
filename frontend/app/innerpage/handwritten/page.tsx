@@ -15,6 +15,13 @@ const PDFSummarizer = () => {
   const [expandedQuestions, setExpandedQuestions] = useState({});
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selected, setSelected] = useState("Llama")
+
+  const handleSelect = (option) => {
+    setSelected(option);
+    setIsOpen(false);
+  };
 
   
 
@@ -36,6 +43,7 @@ const PDFSummarizer = () => {
   
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("model", selected);
   
     try {
       // Step 1: Get the summary
@@ -189,7 +197,46 @@ const PDFSummarizer = () => {
                 <p className="text-gray-600 mt-2 text-sm">
                   Upload a PDF to generate a summary and key questions
                 </p>
+                <div className="relative inline-block text-left w-full">
+      <div>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="inline-flex justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none"
+        >
+          {selected}
+          <svg
+            className="w-5 h-5 ml-2 -mr-1 text-gray-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.854a.75.75 0 111.08 1.04l-4.25 4.417a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+          <ul className="py-1 text-sm text-gray-700">
+            {["Llama", "Custom"].map((option) => (
+              <li
+                key={option}
+                onClick={() => handleSelect(option)}
+                className="block px-4 py-2 cursor-pointer hover:bg-gray-100"
+              >
+                {option}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
               </div>
+
+              
               
               <input
                 type="file"
