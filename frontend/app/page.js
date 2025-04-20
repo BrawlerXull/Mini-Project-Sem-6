@@ -55,7 +55,7 @@ const LandingPage = () => {
                 <div className="space-y-6">
                   <div className="inline-flex items-center space-x-2">
                     <AlertCircle className="text-pink-500 w-6 h-6" />
-                    <h2 className="text-3xl font-bold">Why TalkToDocs Matters</h2>
+                    <h2 className="text-3xl text-pink-500 font-bold">Why TalkToDocs Matters</h2>
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-start space-x-3">
@@ -99,7 +99,7 @@ const LandingPage = () => {
                       <div className="bg-gray-800 rounded-t-xl p-2 aspect-[16/10]">
                         <div className="bg-white rounded-lg h-full p-4 overflow-hidden">
                           <Image
-                            src="/image2.png"
+                            src="/ss.jpeg"
                             alt="TalkToDocs Dashboard"
                             className="w-full h-full object-cover rounded"
                             layout="responsive"

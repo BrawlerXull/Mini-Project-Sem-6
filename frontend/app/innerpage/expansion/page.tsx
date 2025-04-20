@@ -127,7 +127,7 @@ const generateAudio = async () => {
     const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
       method: 'POST',
       headers: {
-        'xi-api-key': 'sk_6f76693cd8ab3307cd683783d84e811b017984841c722678',
+        'xi-api-key': 'sk_28a2e09326180461b123644ec0d2e36aa55b1eb74645729d',
         'Content-Type': 'application/json',
         'Accept': 'audio/mpeg',
       },
@@ -185,7 +185,7 @@ const generateAudio = async () => {
       {/* Header */}
       <header className="bg-pink-50 border-b border-pink-100 py-4 px-6">
         <div className="max-w-6xl mx-auto flex items-center">
-          <h1 className="text-3xl font-bold text-pink-500">PDF Summarizer</h1>
+          <h1 className="text-3xl font-bold text-pink-500">Expansion</h1>
         </div>
       </header>
 

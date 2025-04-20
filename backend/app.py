@@ -378,6 +378,38 @@ def expand():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+superposition_text = """6.4) Superposition of Waves
+Principle:
+
+When two or more waves, travelling through a medium, pass through a common point, each wave produces its own displacement at that point, independent of the presence of other waves. The resultant displacement at that point is equal to the vector sum of displacements due to the individual wave at that point.
+
+There is no change in shape & nature of individual waves due to superposition of waves.
+
+This principle is applicable to all types of waves like sound waves, light waves, waves on string etc."""
+
+
+wmax = """Technologies using TDD:
+
+WiMAX (Worldwide Interoperability for Microwave Access):
+→ WiMAX uses the same frequency band for both uplink and downlink communication. Time slots are allocated dynamically for uplink or downlink depending on network traffic.
+
+5G NTR-TDD (New Radio Time Division Duplex):
+→ TDD in 5G is used to enable high-speed data transmission, especially in mid-band and mmWave spectrum, where spectrum is limited but bandwidth demand is high.
+
+Q.5: Is TDD going to be used in 5G? Discuss.
+
+→ Yes, TDD is being used in 5G and is playing a significant role especially in high frequency bands.
+→ Flexibility: Allows dynamic allocation of resources between uplink and downlink traffic. This aims to support various applications with diverse traffic patterns.
+→ Efficiency in higher frequency: In higher frequency bands like mmWave, TDD is more efficient due to shorter wavelengths and higher propagation losses.
+→ Support Diverse Cases: TDD is well suited for applications that require asymmetric traffic, such as:
+i. Enhanced Mobile Broadband
+ii. Ultra-reliable low latency
+iii. Massive machine type communication"""
+
+
+
 import json
 @app.route('/summarize_ocr', methods=['POST'])
 def summarize_ocr():
@@ -396,14 +428,7 @@ def summarize_ocr():
         # full_text = "\n".join([doc.page_content for doc in documents])
         full_text = extract_text_from_pdf(file_path, "K83693271888957")
 
-        accuracy = calculate_levenshtein_accuracy(full_text, """6.4) Superposition of Waves
-Principle:
-
-When two or more waves, travelling through a medium, pass through a common point, each wave produces its own displacement at that point, independent of the presence of other waves. The resultant displacement at that point is equal to the vector sum of displacements due to the individual wave at that point.
-
-There is no change in shape & nature of individual waves due to superposition of waves.
-
-This principle is applicable to all types of waves like sound waves, light waves, waves on string etc.""")
+        accuracy = calculate_levenshtein_accuracy(full_text, wmax)
         
         print(f"Levenshtein accuracy: {accuracy:.2f}%")
 
