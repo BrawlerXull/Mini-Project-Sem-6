@@ -118,7 +118,7 @@ const PDFSummarizer = () => {
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB', {
         method: 'POST',
         headers: {
-          'xi-api-key': 'sk_28a2e09326180461b123644ec0d2e36aa55b1eb74645729d',
+          'xi-api-key': 'your-api-key',
           'Content-Type': 'application/json',
           'Accept': 'audio/mpeg',
         },
